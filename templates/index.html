@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Flood Smart City</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/styles.css">
+</head>
+<body>
+  <div id="app">
+    <div id="alertBanner" class="banner safe">✅ ALL ZONES OPERATIONAL — No flooding detected</div>
+
+    <div class="main-layout">
+      <aside class="panel side-panel">
+        <h2>🎛 CONTROL</h2>
+
+        <div class="section">
+          <h3>Mode Control</h3>
+          <button id="btnAuto" class="action-btn">AUTO MODE</button>
+          <button id="btnManual" class="action-btn">MANUAL MODE</button>
+        </div>
+
+        <div class="section">
+          <h3>Emergency</h3>
+          <button id="btnStop" class="action-btn danger">EMERGENCY STOP</button>
+        </div>
+
+        <div class="section">
+          <h3>Log</h3>
+          <button id="btnLog" class="action-btn">SHOW LOG</button>
+        </div>
+
+        <div class="section">
+          <h3>System Status</h3>
+          <div class="status-list">
+            <div><span>Mode:</span> <strong id="statusMode">AUTO</strong></div>
+            <div><span>Pump:</span> <strong id="statusPump">NONE</strong></div>
+            <div><span>Connected:</span> <strong id="statusConnected">No</strong></div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="panel center-panel">
+        <div class="dashboard-wrap">
+          <div class="topbar">
+            <div class="title">FLOOD CONTROL SYSTEM</div>
+            <div class="statusline">
+              <span id="topDot" class="dot"></span>
+              <span id="topStatus">OFFLINE</span>
+            </div>
+          </div>
+
+          <div class="zones">
+            <div id="zone-Z1" class="zone">
+              <div class="zone-grid"></div>
+              <div class="zone-header">
+                <div class="zone-title">ZONE 1</div>
+                <div id="pump-Z1" class="pump-indicator">
+                  <span class="pump-dot"></span>
+                  <span>PUMP ACTIVE</span>
+                </div>
+              </div>
+              <div class="zone-water-box">
+                <div id="water-Z1" class="water"></div>
+              </div>
+              <div class="zone-data">
+                <div id="pct-Z1" class="pct">0%</div>
+                <div class="sub">WATER LEVEL</div>
+                <div id="raw-Z1" class="raw">SENSOR: 0 units</div>
+                <div id="badge-Z1" class="badge safe">✓ SAFE</div>
+              </div>
+            </div>
+
+            <div id="zone-Z2" class="zone">
+              <div class="zone-grid"></div>
+              <div class="zone-header">
+                <div class="zone-title">ZONE 2</div>
+                <div id="pump-Z2" class="pump-indicator">
+                  <span class="pump-dot"></span>
+                  <span>PUMP ACTIVE</span>
+                </div>
+              </div>
+              <div class="zone-water-box">
+                <div id="water-Z2" class="water"></div>
+              </div>
+              <div class="zone-data">
+                <div id="pct-Z2" class="pct">0%</div>
+                <div class="sub">WATER LEVEL</div>
+                <div id="raw-Z2" class="raw">SENSOR: 0 units</div>
+                <div id="badge-Z2" class="badge safe">✓ SAFE</div>
+              </div>
+            </div>
+
+            <div id="zone-Z3" class="zone">
+              <div class="zone-grid"></div>
+              <div class="zone-header">
+                <div class="zone-title">ZONE 3</div>
+                <div id="pump-Z3" class="pump-indicator">
+                  <span class="pump-dot"></span>
+                  <span>PUMP ACTIVE</span>
+                </div>
+              </div>
+              <div class="zone-water-box">
+                <div id="water-Z3" class="water"></div>
+              </div>
+              <div class="zone-data">
+                <div id="pct-Z3" class="pct">0%</div>
+                <div class="sub">WATER LEVEL</div>
+                <div id="raw-Z3" class="raw">SENSOR: 0 units</div>
+                <div id="badge-Z3" class="badge safe">✓ SAFE</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hub">
+            <div class="hub-title">CONTROL HUB</div>
+            <div class="hub-cards">
+              <div class="hub-card">
+                <div class="hub-label">MODE</div>
+                <div id="hubMode" class="hub-value">AUTO</div>
+              </div>
+              <div class="hub-card">
+                <div class="hub-label">ACTIVE PUMP</div>
+                <div id="hubPump" class="hub-value cyan">NONE</div>
+              </div>
+              <div class="hub-card">
+                <div class="hub-label">FLOOD COUNT</div>
+                <div id="hubFloodCount" class="hub-value red">0 / 3 ZONES</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <aside class="panel side-panel">
+        <h2>🚰 PUMPS</h2>
+        <div id="manualInfo" class="manual-info warning">Manual controls disabled in AUTO mode</div>
+
+        <div class="section">
+          <h3>Zone 1 Pump</h3>
+          <button id="btnZ1On" class="action-btn manual-btn" disabled>💧 Z1 ON</button>
+          <button id="btnZ1Off" class="action-btn manual-btn" disabled>⏹ Z1 OFF</button>
+        </div>
+
+        <div class="section">
+          <h3>Zone 2 Pump</h3>
+          <button id="btnZ2On" class="action-btn manual-btn" disabled>💧 Z2 ON</button>
+          <button id="btnZ2Off" class="action-btn manual-btn" disabled>⏹ Z2 OFF</button>
+        </div>
+
+        <div class="section">
+          <h3>Zone 3 Pump</h3>
+          <button id="btnZ3On" class="action-btn manual-btn" disabled>💧 Z3 ON</button>
+          <button id="btnZ3Off" class="action-btn manual-btn" disabled>⏹ Z3 OFF</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="logTerminal" class="log-terminal">
+    <div class="log-header">
+      <div>TERMINAL — SYSTEM LOG</div>
+      <div class="log-dots"><span></span><span></span><span></span></div>
+    </div>
+    <div id="logBody" class="log-body"></div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
