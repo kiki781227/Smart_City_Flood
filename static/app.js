@@ -1,13 +1,17 @@
 let showLog = false;
 
 async function sendCommand(cmd) {
-  const res = await fetch("/api/command", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cmd })
-  });
-
-  return res.json();
+  try {
+    const res = await fetch("/api/command", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cmd })
+    });
+    return await res.json();
+  } catch (e) {
+    console.error("Command failed", e);
+    return { ok: false, error: String(e) };
+  }
 }
 
 function setText(id, value) {
@@ -15,13 +19,14 @@ function setText(id, value) {
   if (el) el.textContent = value;
 }
 
-function updateZone(zoneId, data, activePump) {
+function updateZone(zoneId, data, activePump, countdown) {
   const zone = document.getElementById(`zone-${zoneId}`);
   const water = document.getElementById(`water-${zoneId}`);
   const pct = document.getElementById(`pct-${zoneId}`);
   const raw = document.getElementById(`raw-${zoneId}`);
   const badge = document.getElementById(`badge-${zoneId}`);
   const pump = document.getElementById(`pump-${zoneId}`);
+  const countdownEl = document.getElementById(`countdown-${zoneId}`);
 
   const flooded = Number(data.flood) === 1;
 
@@ -34,6 +39,16 @@ function updateZone(zoneId, data, activePump) {
   badge.textContent = flooded ? "⚠ FLOODED" : "✓ SAFE";
 
   pump.classList.toggle("active", activePump === zoneId);
+
+  if (countdownEl) {
+    if (countdown !== null && countdown !== undefined) {
+      countdownEl.textContent = `AUTO START IN ${countdown}s`;
+      countdownEl.classList.add("active");
+    } else {
+      countdownEl.textContent = "";
+      countdownEl.classList.remove("active");
+    }
+  }
 }
 
 function updateButtons(state) {
@@ -65,14 +80,25 @@ function updateButtons(state) {
 
   mappings.forEach(([id, cond]) => {
     const btn = document.getElementById(id);
-    btn.disabled = !manualEnabled || cond;
+    if (btn) btn.disabled = !manualEnabled || cond;
   });
 }
 
-function updateAlert(state) {
+function updateAlert(state, runtime) {
   const flooded = ["Z1", "Z2", "Z3"].filter(z => Number(state[z].flood) === 1);
   const safe = ["Z1", "Z2", "Z3"].filter(z => Number(state[z].flood) === 0);
   const banner = document.getElementById("alertBanner");
+
+  const pending = runtime?.countdowns || {};
+  const pendingZones = Object.entries(pending)
+    .filter(([, v]) => v !== null && v !== undefined)
+    .map(([z, v]) => `${z} (${v}s)`);
+
+  if (pendingZones.length > 0) {
+    banner.className = "banner alert";
+    banner.textContent = `⏳ AUTO COUNTDOWN: ${pendingZones.join(", ")}`;
+    return;
+  }
 
   if (flooded.length > 0) {
     banner.className = "banner alert";
@@ -83,7 +109,7 @@ function updateAlert(state) {
   }
 }
 
-function updateTopStatus(state) {
+function updateTopStatus(state, runtime) {
   const online = !!state.connected;
   const topDot = document.getElementById("topDot");
   const topStatus = document.getElementById("topStatus");
@@ -94,9 +120,12 @@ function updateTopStatus(state) {
   setText("statusMode", state.MODE);
   setText("statusPump", state.P);
   setText("statusConnected", online ? "Yes" : "No");
+  setText("statusTelegram", runtime?.telegram_ok ? "Yes" : "No");
+  setText("statusDelay", `${runtime?.auto_delay_sec ?? 0}s`);
 
   setText("hubMode", state.MODE);
   setText("hubPump", state.P);
+  setText("hubTelegram", runtime?.telegram_ok ? "ON" : "OFF");
 
   const floodCount = ["Z1", "Z2", "Z3"].filter(z => Number(state[z].flood) === 1).length;
   setText("hubFloodCount", `${floodCount} / 3 ZONES`);
@@ -113,15 +142,16 @@ async function refreshState() {
     const res = await fetch("/api/state");
     const data = await res.json();
     const state = data.state;
+    const runtime = data.runtime || {};
 
-    updateZone("Z1", state.Z1, state.P);
-    updateZone("Z2", state.Z2, state.P);
-    updateZone("Z3", state.Z3, state.P);
+    updateZone("Z1", state.Z1, state.P, runtime.countdowns?.Z1 ?? null);
+    updateZone("Z2", state.Z2, state.P, runtime.countdowns?.Z2 ?? null);
+    updateZone("Z3", state.Z3, state.P, runtime.countdowns?.Z3 ?? null);
 
     updateButtons(state);
-    updateAlert(state);
-    updateTopStatus(state);
-    updateLogs(data.logs);
+    updateAlert(state, runtime);
+    updateTopStatus(state, runtime);
+    updateLogs(data.logs || []);
   } catch (e) {
     console.error("State refresh failed", e);
   }
