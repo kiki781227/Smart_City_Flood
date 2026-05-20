@@ -48,8 +48,8 @@ class SerialManager:
         self.auto_pending = {}
 
         self.notifier = TelegramNotifier(
-            token="8557381776:AAFXl7OCoIRbb2EKecmVeqK3wgSfg9F6xug",
-            chat_id="8746700326",
+            token="{Your Bot Toker here}",
+            chat_id="{Your Chat ID here}",
             enabled=True,
         )
 
