@@ -30,24 +30,28 @@ const int RELAY_PINS[3] = {8, 9, 10};   // Z1, Z2, Z3
 
 // Maximum useful water depth for each zone in cm
 // Example: if container depth is 20 cm, use 20.0
-float MAX_WATER_DEPTH_CM[3] = {20.0, 20.0, 20.0};
+float MAX_WATER_DEPTH_CM[3] = {1.0, 1.0, 1.0};
 
 // Distance from sensor to water when zone is empty/safe
 // Usually close to MAX_WATER_DEPTH_CM if sensor is mounted at top
-float EMPTY_DISTANCE_CM[3] = {20.0, 20.0, 20.0};
+float EMPTY_DISTANCE_CM[3] = {4.93, 4.96, 5.7};
 
 // Distance from sensor to water when zone is full / critical
 // Could be near 2-3 cm depending on sensor placement
-float FULL_DISTANCE_CM[3]  = {3.0, 3.0, 3.0};
+float FULL_DISTANCE_CM[3]  = {5.05, 5.08, 1.8};
 
 // Flood threshold in percentage
-int THRESH_PCT[3] = {60, 60, 60};
+int THRESH_PCT[3] = {30, 30, 30};
 
 // Hysteresis in percentage
-int HYST = 5;
+int HYST = 15;
 
 // Flood states
 bool flooded[3] = {false, false, false};
+
+// Debounce: timestamp when a state change candidate starts
+unsigned long flood_change_timestamp[3] = {0, 0, 0};
+const unsigned long DEBOUNCE_MS = 2000; // require state to be stable for 2 seconds
 
 // =====================================================
 // MODE
@@ -150,7 +154,7 @@ float read_distance_cm(int trigPin, int echoPin) {
 
 // Average a few readings for stability
 float smooth_distance_cm(int trigPin, int echoPin) {
-  const int N = 5;
+  const int N = 15;  // Increased from 5 to 15 for more noise filtering
   float sum = 0.0;
   int count = 0;
 
@@ -192,53 +196,63 @@ int distance_to_level_pct(int idx, float distance_cm) {
 }
 
 // =====================================================
-// FLOOD LOGIC
+// FLOOD LOGIC WITH DEBOUNCE
 // =====================================================
 
 void update_flood_states(int levelPct[3]) {
+  unsigned long now = millis();
+  
   for (int i = 0; i < 3; i++) {
     if (!flooded[i]) {
-      // SAFE -> FLOODED
+      // SAFE -> FLOODED transition
       if (levelPct[i] >= THRESH_PCT[i]) {
-        flooded[i] = true;
+        // Candidate for transition
+        if (flood_change_timestamp[i] == 0) {
+          flood_change_timestamp[i] = now;  // Start debounce timer
+        } else if (now - flood_change_timestamp[i] >= DEBOUNCE_MS) {
+          flooded[i] = true;  // Confirm transition after 2 seconds
+          flood_change_timestamp[i] = 0;
+        }
+      } else {
+        // Cancel transition if level drops back
+        flood_change_timestamp[i] = 0;
       }
     } else {
-      // FLOODED -> SAFE with hysteresis
+      // FLOODED -> SAFE transition with hysteresis
       if (levelPct[i] <= (THRESH_PCT[i] - HYST)) {
-        flooded[i] = false;
+        // Candidate for transition
+        if (flood_change_timestamp[i] == 0) {
+          flood_change_timestamp[i] = now;  // Start debounce timer
+        } else if (now - flood_change_timestamp[i] >= DEBOUNCE_MS) {
+          flooded[i] = false;  // Confirm transition after 2 seconds
+          flood_change_timestamp[i] = 0;
+        }
+      } else {
+        // Cancel transition if level rises back
+        flood_change_timestamp[i] = 0;
       }
     }
   }
 }
 
 void auto_control() {
-  // LEDs always reflect flood state
+  // AUTO mode is now supervised by Flask/Python.
+  // Arduino still updates LEDs and applies safety rules,
+  // but it does NOT auto-start pumps on its own anymore.
+
   for (int i = 0; i < 3; i++) {
     set_led(i, flooded[i]);
   }
 
-  // If one pump is already active
   if (pump_active_idx != -1) {
-    // timeout safety
     if (millis() - pump_started_ms > PUMP_MAX_MS) {
       pump_stop(pump_active_idx);
       return;
     }
 
-    // stop if zone is safe again
     if (!flooded[pump_active_idx]) {
       pump_stop(pump_active_idx);
       return;
-    }
-
-    return; // keep current pump running
-  }
-
-  // No pump active: pick first flooded zone (priority Z1 > Z2 > Z3)
-  for (int i = 0; i < 3; i++) {
-    if (flooded[i]) {
-      pump_start(i);
-      break;
     }
   }
 }
